@@ -1,5 +1,5 @@
 import { toPng } from 'html-to-image'
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 
 // Crop an image to a specific region using Canvas API
 function cropImage(dataUrl, x, y, width, height) {
@@ -72,6 +72,13 @@ function ExportPanel({ mapContainer, showPrintArea, setShowPrintArea, setPrintAs
       const ratio = ASPECT_RATIOS[selectedRatio]
       const pixelRatio = selectedResolution
 
+      // Temporarily override Leaflet's background for capture
+      const leafletContainer = mapContainer.querySelector('.leaflet-container')
+      const originalBg = leafletContainer?.style.background
+      if (leafletContainer) {
+        leafletContainer.style.background = bgColor
+      }
+
       // Always capture the full map container (has the actual content)
       const fullDataUrl = await toPng(mapContainer, {
         width: mapContainer.offsetWidth,
@@ -81,6 +88,11 @@ function ExportPanel({ mapContainer, showPrintArea, setShowPrintArea, setPrintAs
         skipFonts: true,
         pixelRatio,
       })
+
+      // Restore original background
+      if (leafletContainer) {
+        leafletContainer.style.background = originalBg
+      }
 
       let finalDataUrl = fullDataUrl
 
@@ -117,6 +129,15 @@ function ExportPanel({ mapContainer, showPrintArea, setShowPrintArea, setPrintAs
       <h3>Export</h3>
 
       <div className="control-group">
+        <label>Background Color</label>
+        <input
+          type="color"
+          value={bgColor}
+          onChange={e => setBgColor(e.target.value)}
+        />
+      </div>
+	
+      <div className="control-group">
         <label>
           <input
             type="checkbox"
@@ -132,20 +153,13 @@ function ExportPanel({ mapContainer, showPrintArea, setShowPrintArea, setPrintAs
         </p>
       </div>
 
-      <div className="control-group">
-        <label>Background Color</label>
-        <input
-          type="color"
-          value={bgColor}
-          onChange={e => setBgColor(e.target.value)}
-        />
-      </div>
 
       <div className="control-group">
         <label>Aspect Ratio</label>
         <select
           value={selectedRatio}
           onChange={e => setSelectedRatio(parseInt(e.target.value))}
+					disabled={!showPrintArea}
         >
           {ASPECT_RATIOS.map((ratio, i) => (
             <option key={i} value={i}>
@@ -160,6 +174,7 @@ function ExportPanel({ mapContainer, showPrintArea, setShowPrintArea, setPrintAs
         <select
           value={selectedResolution}
           onChange={e => setSelectedResolution(parseInt(e.target.value))}
+					disabled={!showPrintArea}
         >
           {RESOLUTION_OPTIONS.map(opt => (
             <option key={opt.value} value={opt.value}>
