@@ -18,28 +18,36 @@ function cropImage(dataUrl, x, y, width, height) {
   })
 }
 
-const PRESETS = [
-  { name: '8.5x11"', width: 8.5, height: 11 },
-  { name: '11x17"', width: 11, height: 17 },
-  { name: '18x24"', width: 18, height: 24 },
-  { name: '24x36"', width: 24, height: 36 },
+const ASPECT_RATIOS = [
+  { label: '17:22 (Letter)', width: 17, height: 22 },
+  { label: '11:17 (Tabloid)', width: 11, height: 17 },
+  { label: '3:4 (Portrait)', width: 3, height: 4 },
+  { label: '4:3 (Landscape)', width: 4, height: 3 },
+  { label: '2:3 (Large Poster)', width: 2, height: 3 },
+  { label: '1:1 (Square)', width: 1, height: 1 },
+  { label: '16:9 (Widescreen)', width: 16, height: 9 },
 ]
 
-const DPI_OPTIONS = [150, 300]
+const RESOLUTION_OPTIONS = [
+  { label: '1x', value: 1 },
+  { label: '2x', value: 2 },
+  { label: '3x', value: 3 },
+  { label: '4x', value: 4 },
+]
 
 function ExportPanel({ mapContainer, showPrintArea, setShowPrintArea, setPrintAspectRatio, printAreaElement }) {
-  const [selectedPreset, setSelectedPreset] = useState(0)
-  const [selectedDpi, setSelectedDpi] = useState(150)
+  const [selectedRatio, setSelectedRatio] = useState(0)
+  const [selectedResolution, setSelectedResolution] = useState(1)
   const [exporting, setExporting] = useState(false)
   const [bgColor, setBgColor] = useState('#ffffff')
 
-  // Update aspect ratio when preset changes
+  // Update aspect ratio when selection changes
   useEffect(() => {
-    const preset = PRESETS[selectedPreset]
-    if (preset && setPrintAspectRatio) {
-      setPrintAspectRatio(preset.width / preset.height)
+    const ratio = ASPECT_RATIOS[selectedRatio]
+    if (ratio && setPrintAspectRatio) {
+      setPrintAspectRatio(ratio.width / ratio.height)
     }
-  }, [selectedPreset, setPrintAspectRatio])
+  }, [selectedRatio, setPrintAspectRatio])
 
   const handleExport = async () => {
     if (!mapContainer) return
@@ -61,7 +69,8 @@ function ExportPanel({ mapContainer, showPrintArea, setShowPrintArea, setPrintAs
         return true
       }
 
-      const preset = PRESETS[selectedPreset]
+      const ratio = ASPECT_RATIOS[selectedRatio]
+      const pixelRatio = selectedResolution
 
       // Always capture the full map container (has the actual content)
       const fullDataUrl = await toPng(mapContainer, {
@@ -70,6 +79,7 @@ function ExportPanel({ mapContainer, showPrintArea, setShowPrintArea, setPrintAs
         backgroundColor: bgColor,
         filter,
         skipFonts: true,
+        pixelRatio,
       })
 
       let finalDataUrl = fullDataUrl
@@ -79,18 +89,19 @@ function ExportPanel({ mapContainer, showPrintArea, setShowPrintArea, setPrintAs
         const mapRect = mapContainer.getBoundingClientRect()
         const printRect = printAreaElement.getBoundingClientRect()
 
-        // Calculate crop region relative to map container
-        const cropX = printRect.left - mapRect.left
-        const cropY = printRect.top - mapRect.top
-        const cropWidth = printRect.width
-        const cropHeight = printRect.height
+        // Calculate crop region relative to map container, scaled by pixelRatio
+        const cropX = (printRect.left - mapRect.left) * pixelRatio
+        const cropY = (printRect.top - mapRect.top) * pixelRatio
+        const cropWidth = printRect.width * pixelRatio
+        const cropHeight = printRect.height * pixelRatio
 
         finalDataUrl = await cropImage(fullDataUrl, cropX, cropY, cropWidth, cropHeight)
       }
 
       // Download
       const link = document.createElement('a')
-      link.download = `seattle-neighborhoods-${preset.name.replace(/"/g, '')}-${selectedDpi}dpi.png`
+      const resLabel = RESOLUTION_OPTIONS.find(r => r.value === selectedResolution)?.label || '1x'
+      link.download = `seattle-neighborhoods-${ratio.width}x${ratio.height}-${resLabel}.png`
       link.href = finalDataUrl
       link.click()
     } catch (err) {
@@ -131,28 +142,28 @@ function ExportPanel({ mapContainer, showPrintArea, setShowPrintArea, setPrintAs
       </div>
 
       <div className="control-group">
-        <label>Paper Size</label>
+        <label>Aspect Ratio</label>
         <select
-          value={selectedPreset}
-          onChange={e => setSelectedPreset(parseInt(e.target.value))}
+          value={selectedRatio}
+          onChange={e => setSelectedRatio(parseInt(e.target.value))}
         >
-          {PRESETS.map((preset, i) => (
+          {ASPECT_RATIOS.map((ratio, i) => (
             <option key={i} value={i}>
-              {preset.name}
+              {ratio.label}
             </option>
           ))}
         </select>
       </div>
 
       <div className="control-group">
-        <label>DPI</label>
+        <label>Resolution</label>
         <select
-          value={selectedDpi}
-          onChange={e => setSelectedDpi(parseInt(e.target.value))}
+          value={selectedResolution}
+          onChange={e => setSelectedResolution(parseInt(e.target.value))}
         >
-          {DPI_OPTIONS.map(dpi => (
-            <option key={dpi} value={dpi}>
-              {dpi} DPI
+          {RESOLUTION_OPTIONS.map(opt => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
             </option>
           ))}
         </select>
