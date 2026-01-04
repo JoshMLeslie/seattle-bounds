@@ -1,4 +1,4 @@
-function Controls({ styles, setStyles, showLabels, setShowLabels, labelSize, setLabelSize }) {
+function Controls({ styles, setStyles, showLabels, setShowLabels, labelSize, setLabelSize, showSmallLabels, setShowSmallLabels }) {
   const handleChange = (key, value) => {
     setStyles(prev => ({ ...prev, [key]: value }))
   }
@@ -74,6 +74,18 @@ function Controls({ styles, setStyles, showLabels, setShowLabels, labelSize, set
             disabled={!showLabels}
           />
         </div>
+      </div>
+
+      <div className="control-group">
+        <label className="checkbox-label">
+          <input
+            type="checkbox"
+            checked={showSmallLabels}
+            onChange={e => setShowSmallLabels(e.target.checked)}
+            disabled={!showLabels}
+          />
+          Show Small Labels
+        </label>
       </div>
     </div>
   )
