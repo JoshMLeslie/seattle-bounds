@@ -17,6 +17,7 @@ function App() {
   const [labelSize, setLabelSize] = useState(10)
   const [showSmallLabels, setShowSmallLabels] = useState(true)
   const [mapContainer, setMapContainer] = useState(null)
+  const [map, setMap] = useState(null)
   const [showPrintArea, setShowPrintArea] = useState(false)
   const [printAspectRatio, setPrintAspectRatio] = useState(8.5 / 11) // default letter
   const [printAreaElement, setPrintAreaElement] = useState(null)
@@ -49,6 +50,7 @@ function App() {
           />
           <ExportPanel
             mapContainer={mapContainer}
+            map={map}
             showPrintArea={showPrintArea}
             setShowPrintArea={setShowPrintArea}
             setPrintAspectRatio={setPrintAspectRatio}
@@ -62,6 +64,7 @@ function App() {
           labelSize={labelSize}
           showSmallLabels={showSmallLabels}
           onContainerRef={handleContainerRef}
+          onMapReady={setMap}
           showPrintArea={showPrintArea}
           printAspectRatio={printAspectRatio}
           onPrintAreaRef={handlePrintAreaRef}

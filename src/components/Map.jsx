@@ -10,7 +10,7 @@ const GEOJSON_URL = 'https://raw.githubusercontent.com/seattleio/seattle-boundar
 /** @type {[number, number]} Seattle center coordinates */
 const SEATTLE_CENTER = [47.6062, -122.3321]
 
-function Map({ styles, showLabels, labelSize, showSmallLabels, onContainerRef, showPrintArea, printAspectRatio, onPrintAreaRef }) {
+function Map({ styles, showLabels, labelSize, showSmallLabels, onContainerRef, onMapReady, showPrintArea, printAspectRatio, onPrintAreaRef }) {
   const printAreaRef = useRef(null)
   const [geojson, setGeojson] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -51,6 +51,7 @@ function Map({ styles, showLabels, labelSize, showSmallLabels, onContainerRef, s
   return (
     <div ref={containerRefCallback} className="map-container">
       <MapContainer
+        ref={onMapReady}
         center={SEATTLE_CENTER}
         zoom={11}
         style={{ height: '100%', width: '100%' }}

@@ -1,5 +1,6 @@
 import { toPng } from 'html-to-image'
 import { useEffect, useState } from 'react'
+import { exportVectorPdf } from '../utils/exportPdf'
 
 // Crop an image to a specific region using Canvas API
 function cropImage(dataUrl, x, y, width, height) {
@@ -24,6 +25,9 @@ const ASPECT_RATIOS = [
   { label: '3:4 (Portrait)', width: 3, height: 4 },
   { label: '4:3 (Landscape)', width: 4, height: 3 },
   { label: '2:3 (Large Poster)', width: 2, height: 3 },
+  // Physical sizes export as vector PDF instead of PNG.
+  { label: '36 × 54 in (3 ft, PDF)', width: 2, height: 3, widthIn: 36 },
+  { label: '48 × 72 in (4 ft, PDF)', width: 2, height: 3, widthIn: 48 },
   { label: '1:1 (Square)', width: 1, height: 1 },
   { label: '16:9 (Widescreen)', width: 16, height: 9 },
 ]
@@ -35,11 +39,34 @@ const RESOLUTION_OPTIONS = [
   { label: '4x', value: 4 },
 ]
 
-function ExportPanel({ mapContainer, showPrintArea, setShowPrintArea, setPrintAspectRatio, printAreaElement }) {
+function ExportPanel({ mapContainer, map, showPrintArea, setShowPrintArea, setPrintAspectRatio, printAreaElement }) {
   const [selectedRatio, setSelectedRatio] = useState(0)
   const [selectedResolution, setSelectedResolution] = useState(1)
   const [exporting, setExporting] = useState(false)
+  const [progress, setProgress] = useState('')
   const [bgColor, setBgColor] = useState('#ffffff')
+  const [includeBasemap, setIncludeBasemap] = useState(false)
+
+  // The aspect picker only applies with the print area on, so PDF mode does too.
+  const pdfWidthIn = showPrintArea ? ASPECT_RATIOS[selectedRatio].widthIn : undefined
+
+  const handleExportPdf = async () => {
+    if (!map || !printAreaElement) return
+    setExporting(true)
+    try {
+      const cropRect = printAreaElement.getBoundingClientRect()
+      const { warning } = await exportVectorPdf({
+        map, cropRect, widthIn: pdfWidthIn, bgColor, includeBasemap, onProgress: setProgress,
+      })
+      if (warning) alert(warning)
+    } catch (err) {
+      console.error('PDF export failed:', err)
+      alert('PDF export failed. See console for details.')
+    } finally {
+      setExporting(false)
+      setProgress('')
+    }
+  }
 
   // Update aspect ratio when selection changes
   useEffect(() => {
@@ -55,17 +82,12 @@ function ExportPanel({ mapContainer, showPrintArea, setShowPrintArea, setPrintAs
     setExporting(true)
 
     try {
-      // Filter out external tile images (CORS issues) and print area overlay UI
+      // Leave out the print area overlay UI, and the basemap tiles unless asked for
       const filter = (node) => {
         if (node.classList?.contains('print-area-overlay')) return false
         if (node.classList?.contains('print-area-label')) return false
         if (node.classList?.contains('resize-handle')) return false
-        if (node.tagName === 'IMG') {
-          const src = node.getAttribute('src') || ''
-          if (src.includes('basemaps.cartocdn.com') || src.includes('tile')) {
-            return false
-          }
-        }
+        if (!includeBasemap && node.classList?.contains('leaflet-tile')) return false
         return true
       }
 
@@ -136,7 +158,18 @@ function ExportPanel({ mapContainer, showPrintArea, setShowPrintArea, setPrintAs
           onChange={e => setBgColor(e.target.value)}
         />
       </div>
-	
+
+      <div className="control-group">
+        <label>
+          <input
+            type="checkbox"
+            checked={includeBasemap}
+            onChange={e => setIncludeBasemap(e.target.checked)}
+          />
+          Include Basemap
+        </label>
+      </div>
+
       <div className="control-group">
         <label>
           <input
@@ -174,7 +207,7 @@ function ExportPanel({ mapContainer, showPrintArea, setShowPrintArea, setPrintAs
         <select
           value={selectedResolution}
           onChange={e => setSelectedResolution(parseInt(e.target.value))}
-					disabled={!showPrintArea}
+					disabled={!showPrintArea || !!pdfWidthIn}
         >
           {RESOLUTION_OPTIONS.map(opt => (
             <option key={opt.value} value={opt.value}>
@@ -184,16 +217,19 @@ function ExportPanel({ mapContainer, showPrintArea, setShowPrintArea, setPrintAs
         </select>
       </div>
 
-      <p className="export-note">
-        Note: Base map tiles cannot be exported (CORS). Only boundaries on background.
-      </p>
+      {pdfWidthIn && (
+        <p className="export-note">
+          Vector PDF: line widths and labels scale with the box, so a bigger box prints finer lines.
+          {includeBasemap && ' The basemap is re-fetched at print detail, so it shows more streets than the screen.'}
+        </p>
+      )}
 
       <button
         className="export-button"
-        onClick={handleExport}
-        disabled={exporting}
+        onClick={pdfWidthIn ? handleExportPdf : handleExport}
+        disabled={exporting || (!!pdfWidthIn && !map)}
       >
-        {exporting ? 'Exporting...' : 'Export PNG'}
+        {exporting ? (progress || 'Exporting...') : pdfWidthIn ? 'Export PDF' : 'Export PNG'}
       </button>
     </div>
   )
