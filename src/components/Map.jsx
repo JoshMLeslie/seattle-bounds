@@ -3,6 +3,7 @@ import { MapContainer, TileLayer } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import PrintAreaOverlay from './PrintAreaOverlay'
 import NeighborhoodLayer from './NeighborhoodLayer'
+import { BASEMAP } from '../basemap'
 
 const GEOJSON_URL = 'https://raw.githubusercontent.com/seattleio/seattle-boundaries-data/master/data/neighborhoods.geojson'
 
@@ -58,8 +59,10 @@ function Map({ styles, showLabels, labelSize, showSmallLabels, onContainerRef, s
         zoomDelta={0.25}
       >
         <TileLayer
-          attribution='&copy; <a href="https://carto.com/">CARTO</a>'
-          url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+          attribution={BASEMAP.attribution}
+          url={BASEMAP.url}
+          maxZoom={BASEMAP.maxZoom}
+          crossOrigin="anonymous"
         />
         {geojson && (
           <NeighborhoodLayer
